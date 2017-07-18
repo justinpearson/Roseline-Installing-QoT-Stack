@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title>Roseline Project: Installing the Roseline Quality-of-Time Software Stack</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="pandoc.css" type="text/css" />
+  <script type="text/javascript" src="highslide/highslide.js" ></script>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Roseline Project: Installing the Roseline Quality-of-Time Software Stack</h1>
+</div>
+<div id="TOC">
+<ul>
+<li><a href="#roseline-project-installing-the-roseline-quality-of-time-software-stack">Roseline Project: Installing the Roseline Quality-of-Time Software Stack</a><ul>
+<li><a href="#get-8gb-micro-sd-card.">Get 8GB micro-SD card.</a></li>
+<li><a href="#download-sd-card-image-roseline_bbb_v3.img">Download SD card image <code>roseline_bbb_v3.img</code></a></li>
+<li><a href="#prepare-new-sd-card.">Prepare new SD card.</a></li>
+<li><a href="#boot-bbb">Boot BBB:</a></li>
+<li><a href="#set-up-networking">Set up networking</a></li>
+<li><a href="#install-a-ton-of-qot-stuff-and-put-it-on-the-bbb">Install a ton of QoT stuff and put it on the BBB</a><ul>
+<li><a href="#get-the-qot-bundle-wget">Get the QoT bundle (wget)</a></li>
+<li><a href="#get-the-linux-kernel-source-git-clone">Get the Linux kernel source (git clone)</a></li>
+<li><a href="#get-build-the-qot-source-git-clone">Get &amp; build the QoT source (git clone)</a></li>
+</ul></li>
+<li><a href="#running-qot-tests">Running QoT tests</a><ul>
+<li><a href="#testptp"><code>testptp</code></a></li>
+<li><a href="#phc2phc"><code>phc2phc</code></a></li>
+<li><a href="#qotdaemon--v"><code>qotdaemon -v</code></a></li>
+<li><a href="#helloworld"><code>helloworld</code></a></li>
+<li><a href="#get-other-scripts-on-the-bbb">Get other scripts on the BBB</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<h1 id="roseline-project-installing-the-roseline-quality-of-time-software-stack">Roseline Project: Installing the Roseline Quality-of-Time Software Stack</h1>
+<p>How to build a linux kernel equipped with Roseline's Quality-of-Time service (Aug 2016)</p>
+<ul>
+<li>UCLA trip with Sean Kim</li>
+<li>Aug 12, 2016</li>
+<li>Justin Pearson</li>
+</ul>
+<p>I visited Sean Kim (2nd-year UCLA CS student, hired to help w/ QoT development &amp; install procedure) last Friday. We successfully installed the QoT stack on one of my BBB's SD cards (we could run <code>qot-daemon</code>, <code>phc2phc</code>, and <code>helloworld</code>).</p>
+<p>The secret: &quot;Having the BBBs pull their rootfs from the NUC's NFS causes trouble, you should install the QoT stack onto a micro SD card and run it over ssh.&quot;</p>
+<p>We were basically following instructions from our project wiki:</p>
+<p>https://bitbucket.org/rose-line/qot-stack</p>
+<p>However, the &quot;install to SD card&quot; instructions are incomplete and several steps are out of order. Sean helped me figure out the right order.</p>
+<p>I ran a screen-recorder to capture everything we did:</p>
+<ul>
+<li><code>installing-qot-to-SD-card-BASIC-WORKS.ogv</code></li>
+<li><code>installing-qot.mov</code> (same movie, different format)</li>
+<li>on the UCLA NUC (I'm borrowing it)</li>
+<li>4.5 hours long</li>
+<li>We took some wrong turns, so I don't recommend watching &amp; executing from start to finish.</li>
+</ul>
+<p>What follows is a summary of the video -- how to install the QoT stack to an SD card, based on our experience.</p>
+<p>If you want more details, watch the video -- skipping to the right time of course (look at the screenshot's video timestamp in the lower-right).</p>
+<h2 id="get-8gb-micro-sd-card.">Get 8GB micro-SD card.</h2>
+<p>Hint: Can't tell which micro SD card to use? In the &quot;old&quot; days (with Andrew S, Oct 2015) we had partitions</p>
+<ul>
+<li>data</li>
+<li>rootfs
+<ul>
+<li>log</li>
+<li>ssh</li>
+<li>ssh_client</li>
+</ul></li>
+<li>BOOT</li>
+</ul>
+<p><a href="Images/2016-08-15-09-38-51.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-38-51.png" title="fig:blah" width="400" /></a></p>
+<p>That's the kind you can wipe out.</p>
+<p>The following format is more recent (July 2016). We used it when the &quot;host&quot; computer (the Intel NUC) is running an NFS that the BBB mounts its rootfs from. It has structure</p>
+<ul>
+<li>user</li>
+<li>rootfs
+<ul>
+<li>opensplice</li>
+<li>ssh</li>
+</ul></li>
+<li>boot
+<ul>
+<li>MLO</li>
+<li>u-boot.img</li>
+<li>uEnv.txt</li>
+</ul></li>
+</ul>
+<p><a href="Images/2016-08-15-09-41-41.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-41-41.png" title="fig:blah" width="400" /></a></p>
+<p>Note: these are all 8GB cards. I think 4 GB cards won't be big enough.</p>
+<h2 id="download-sd-card-image-roseline_bbb_v3.img">Download SD card image <code>roseline_bbb_v3.img</code></h2>
+<ul>
+<li>https://drive.google.com/file/d/0B5sYz4zKsYSaQk1MWTlicGdFcU0/view?usp=sharing</li>
+<li>4GB.</li>
+<li>my NUC:~/qot-stack-2016-08-12/roseline_bbb_v3.img</li>
+</ul>
+<h2 id="prepare-new-sd-card.">Prepare new SD card.</h2>
+<ul>
+<li>Unmount SD card but do not eject. Eg, using <code>gparted</code>:</li>
+</ul>
+<p><a href="Images/2016-08-15-09-44-02.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-44-02.png" title="fig:blah" width="400" /></a></p>
+<ul>
+<li>Right-click disk image, &quot;Open With Disk Image Writer&quot;</li>
+</ul>
+<p><a href="Images/2016-08-15-09-45-21.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-45-21.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-09-47-50.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-47-50.png" title="fig:blah" width="400" /></a></p>
+<ul>
+<li>Takes 5 minutes.</li>
+</ul>
+<p><a href="Images/2016-08-15-09-49-59.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-49-59.png" title="fig:blah" width="400" /></a></p>
+<h2 id="boot-bbb">Boot BBB:</h2>
+<ul>
+<li>Plug in SD card to BBB</li>
+<li>plug in FTDI-to-usb cable (black: pin 1, green: pin 4, white: pin 5, red: no connect!)</li>
+<li>Start minicom:</li>
+</ul>
+<p><a href="Images/2016-08-15-09-51-18.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-51-18.png" title="fig:blah" width="400" /></a></p>
+<ul>
+<li>Power up BBB:</li>
+</ul>
+<p><a href="Images/2016-08-15-09-51-45.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-51-45.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-09-55-34.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-55-34.png" title="fig:blah" width="400" /></a></p>
+<p>At this point you can interact w/ the BBB thru Minicom. But we should ssh into it instead: faster, doesn't require FTDI cable. And we'll need ethernet access to copy over files later.</p>
+<h2 id="set-up-networking">Set up networking</h2>
+<p>Previously I had followed these instructions</p>
+<p>https://bitbucket.org/rose-line/qot-stack#markdown-header-step-2-networking</p>
+<p>to configure my NUC to run a DHCP server and assign IP addrs to the BBBs.</p>
+<p>Installing a DHCP server is a pain. You could probably statically assign an IP to the BBB.</p>
+<p>When you get it working, you can run <code>ifconfig</code> on the BBB thru Minicom and see that the NUC (host, DHCP server) assigned an IP to the BBB:</p>
+<p><a href="Images/2016-08-15-09-55-56.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-55-56.png" title="fig:blah" width="400" /></a></p>
+<p>I skipped Step 4 from the instructions -- I could already <code>ssh root@10.42.0.126</code> without a password. Fine.</p>
+<p><a href="Images/2016-08-15-09-59-01.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-09-59-01.png" title="fig:blah" width="400" /></a></p>
+<h2 id="install-a-ton-of-qot-stuff-and-put-it-on-the-bbb">Install a ton of QoT stuff and put it on the BBB</h2>
+<p>We're basically on Step 5 here:</p>
+<p><a href="Images/2016-08-15-10-01-20.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-01-20.png" title="fig:blah" width="400" /></a></p>
+<p>This is where the instructions got &quot;nonlinear&quot; -- it turns out you have to download a ton of files, the Linux kernel, and so on, even though we hardly use them. Their paths (like <code>/export/rootfs/...</code>) are hard-coded into various make files, so the simplest thing is just to follow the instructions to download these huge files so that your file directories are what the makefiles expect :-/</p>
+<h3 id="get-the-qot-bundle-wget">Get the QoT bundle (wget)</h3>
+<p>(What is it? Why is it like 500 MB? How different from the QoT src code, which we also download below?)</p>
+<p>The following wget takes forever, so if you can, use a USB drive to get <code>qot-bundle.tar.bz2</code> from a friend.</p>
+<pre><code>$&gt; su -
+$&gt; sudo mkdir /export
+$&gt; cd /export
+$&gt; wget https://bitbucket.org/rose-line/qot-stack/downloads/qot-bundle.tar.bz2
+$&gt; tar -xjpf qot-bundle.tar.bz2
+$&gt; rm -rf qot-bundle.tar.bz2</code></pre>
+<p><a href="Images/2016-08-15-10-02-38.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-02-38.png" title="fig:blah" width="400" /></a></p>
+<p>I forget why you need the QoT bundle. You shouldn't really need it, since the kernel &amp; rootfs is baked into the SD card image. But some makefile fails if you don't have it.</p>
+<h3 id="get-the-linux-kernel-source-git-clone">Get the Linux kernel source (git clone)</h3>
+<p>A later step assumes that you have a linux source tree to copy into (<code>/export/bb-kernel/KERNEL</code>), and will fail if you don't have it, like this:</p>
+<p><a href="Images/2016-08-15-11-00-12.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-00-12.png" title="fig:blah" width="400" /></a></p>
+<p>I guess it's needed to build the kernel modules? Dunno.</p>
+<p>Solution: Get the linux src, the <code>bb-kernel</code> directory, from git (or a friend, or a previous install):</p>
+<p><a href="Images/2016-08-15-11-00-12.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-00-12.png" title="fig:blah" width="400" /></a></p>
+<p>If you can't cp it from somewhere, you'll have to just download it with git clone:</p>
+<pre><code>$&gt; su -
+$&gt; cd /export
+$&gt; git clone https://github.com/RobertCNelson/bb-kernel.git -b 4.1.12-bone-rt-r16</code></pre>
+<p>At the end of the previous 2 steps (QoT bundle and Linux kernel), , your <code>/export/</code> should look like:</p>
+<p><a href="Images/2016-08-15-10-30-46.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-30-46.png" title="fig:blah" width="400" /></a></p>
+<p>Armed with <code>/export/bb-kernel/</code> and <code>/export/rootfs</code>, you're ready to build the actual QoT code.</p>
+<h3 id="get-build-the-qot-source-git-clone">Get &amp; build the QoT source (git clone)</h3>
+<p>We're basically following these instructions, with some modifications:</p>
+<p><a href="Images/2016-08-15-11-04-32.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-04-32.png" title="fig:blah" width="400" /></a></p>
+<p>Specifically:</p>
+<pre><code>$&gt; git clone https://bitbucket.org/rose-line/qot-stack.git
+$&gt; cd qot-stack
+$&gt; git submodule init
+$&gt; git submodule update</code></pre>
+<p><a href="Images/2016-08-15-11-30-30.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-30-30.png" title="fig:blah" width="400" /></a></p>
+<pre><code>$&gt; pushd thirdparty/bb.org-overlays
+$&gt; ./dtc-overlay.sh
+$&gt; popd
+$&gt; pushd thirdparty/opensplice
+$&gt; git checkout -b v64 OSPL_V6_4_OSS_RELEASE
+$&gt; git submodule init
+$&gt; git submodule update
+$&gt; ./configure</code></pre>
+<p><a href="Images/2016-08-15-11-32-35.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-32-35.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-11-33-06.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-33-06.png" title="fig:blah" width="400" /></a></p>
+<p>I see that my dtc is</p>
+<pre><code>dtc: Version: DT 1.4.1-g1e...</code></pre>
+<p>(is that good?)</p>
+<pre><code>$&gt; . envs-armv7l.linux-dev.sh
+$&gt; make
+$&gt; make install</code></pre>
+<p><a href="Images/2016-08-15-11-35-06.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-35-06.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-11-35-58.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-35-58.png" title="fig:blah" width="400" /></a></p>
+<p>Now insert <code>-std=c++11</code> to the CPPFLAGS variable in ./install/HDE/armv7l.linux-dev/custom_lib/Makefile.Build_DCPS_ISO_Cpp_Lib file.</p>
+<p><a href="Images/2016-08-15-11-36-55.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-36-55.png" title="fig:blah" width="400" /></a></p>
+<pre><code>$&gt; pushd install/HDE/%build%/custom_lib
+$&gt; make -f Makefile.Build_DCPS_ISO_Cpp_Lib</code></pre>
+<p><a href="Images/2016-08-15-11-38-20.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-38-20.png" title="fig:blah" width="400" /></a></p>
+<pre><code>$&gt; popd
+$&gt; popd
+$&gt; mkdir -p build % Do this in the top most project directory /qot-stack %
+$&gt; pushd build
+$&gt; ccmake ..</code></pre>
+<p><a href="Images/2016-08-15-11-44-24.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-44-24.png" title="fig:blah" width="400" /></a></p>
+<p>Cmake is screwy: press 'c' for configure, then edit the menu items, then 'c' to configure again? Then 'g' to generate makefiles.</p>
+<p>Had some weird Cmake error because we hadn't installed the QoT bundle above:</p>
+<p><a href="Images/2016-08-15-11-45-40.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-45-40.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-11-46-14.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-46-14.png" title="fig:blah" width="400" /></a></p>
+<p>We needed the <code>/export/rootfs</code> dir that comes with teh QoT bundle. Also we needed the <code>/export/bb-kernel</code> that comes from the Linux kernel step. You wouldn't guess that from the error msg. I copied them over and essentially did all the steps over again, and it worked that time. Hopefully you started by intalling the QoT bundle so it should just work for you.</p>
+<pre><code>$&gt; make</code></pre>
+<p><a href="Images/2016-08-15-11-49-46.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-49-46.png" title="fig:blah" width="400" /></a></p>
+<p>Arg, &quot;WARNING: &quot;qot_register&quot; undefined:</p>
+<p><a href="Images/2016-08-15-10-32-55.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-32-55.png" title="fig:blah" width="400" /></a></p>
+<p>Fix it like this:</p>
+<p><a href="Images/2016-08-15-11-08-47.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-08-47.png" title="fig:blah" width="400" /></a></p>
+<p>(From the wiki:)</p>
+<p>You may get this error:</p>
+<pre><code>WARNING: &quot;qot_register&quot; [/home/shk/bb/qot-stack/src/modules/qot_am335x/qot_am335x.ko] undefined!
+WARNING: &quot;qot_unregister&quot; [/home/shk/bb/qot-stack/src/modules/qot_am335x/qot_am335x.ko] undefined!</code></pre>
+<p>while compiling. This is due to module files being in different directories. Copy over Module.symvers file to fix this error.</p>
+<pre><code>$&gt; cp src/modules/qot/Module.symvers src/modules/qot_am335x/Module.symvers</code></pre>
+<p>Run make again and the warning should be gone.</p>
+<p><a href="Images/2016-08-15-12-00-15.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-00-15.png" title="fig:blah" width="400" /></a></p>
+<pre><code>$&gt; sudo make install
+$&gt; popd</code></pre>
+<p><a href="Images/2016-08-15-11-10-00.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-11-10-00.png" title="fig:blah" width="400" /></a></p>
+<p>You can see it's installing to <code>/export/rootfs/usr/local/include/qot.h</code> and so on. It's silly because we're not using that dir. But whatever. That's why we needed to download teh QoT bundle, which creates that dir.</p>
+<p>Now we edit the main Makefile to have the correct kernel ver &amp; ip addr:</p>
+<p><a href="Images/2016-08-15-12-00-57.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-00-57.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-12-01-38.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-01-38.png" title="fig:blah" width="400" /></a></p>
+<p>And finally we do</p>
+<pre><code>make install_sd</code></pre>
+<p>to copy some scripts onto the card:</p>
+<p><a href="Images/2016-08-15-12-02-06.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-02-06.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-12-02-42.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-02-42.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-12-02-54.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-02-54.png" title="fig:blah" width="400" /></a></p>
+<p>Lastly, run <code>ldconfig</code> on the BBB. And maybe <code>depmod -a</code> too:</p>
+<p><a href="Images/2016-08-15-12-28-15.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-12-28-15.png" title="fig:blah" width="400" /></a></p>
+<p>The important thing is that <code>lsmod</code> shows that the <code>qot</code> and <code>qot_am335x</code> kernel modules have been loaded.</p>
+<h2 id="running-qot-tests">Running QoT tests</h2>
+<h3 id="testptp"><code>testptp</code></h3>
+<p><a href="Images/2016-08-15-10-43-38.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-43-38.png" title="fig:blah" width="400" /></a></p>
+<p>It worked if you have &quot;4 external time stamp channels&quot; on ptp0 and &quot;3 external time stamp channels&quot; on ptp1.</p>
+<p>There's probably a simpler way to see if it worked, like check <code>/dev/ptp*</code> or something.</p>
+<h3 id="phc2phc"><code>phc2phc</code></h3>
+<p>This program sync's the ethernet PHY's clock (which timestamps incoming packets) with the CPU's clock (which is what everything else like CLOCK_REALTIME is timestamped with).</p>
+<p><a href="Images/2016-08-15-10-43-23.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-43-23.png" title="fig:blah" width="400" /></a></p>
+<h3 id="qotdaemon--v"><code>qotdaemon -v</code></h3>
+<p>This program watches for new QoT timelines to be broadcast across the network.</p>
+<p><a href="Images/2016-08-15-10-44-03.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-44-03.png" title="fig:blah" width="400" /></a></p>
+<h3 id="helloworld"><code>helloworld</code></h3>
+<p>The &quot;hello world&quot; of the QoT stack. This program makes a timeline then sleeps for 1 sec on that timeline.</p>
+<p><a href="Images/2016-08-15-10-44-56.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-44-56.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-10-46-34.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-46-34.png" title="fig:blah" width="400" /></a></p>
+<p>I imagine that if you have other BBBs on the network, this test is a litle more interesting.</p>
+<h3 id="get-other-scripts-on-the-bbb">Get other scripts on the BBB</h3>
+<p>Because this was the SD card installation, you have to <code>scp</code> them over. There is a makefile to do that for you:</p>
+<p><a href="Images/2016-08-15-10-48-45.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-48-45.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-10-49-44.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-49-44.png" title="fig:blah" width="400" /></a></p>
+<p><a href="Images/2016-08-15-10-49-50.png" onclick="return hs.expand(this)"><img src="Images/2016-08-15-10-49-50.png" title="fig:blah" width="400" /></a></p>
+</body>
+</html>

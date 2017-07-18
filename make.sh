@@ -1,0 +1,1 @@
+pandoc -s --toc -f markdown -t html --filter img-to-zoomable-link.py -c pandoc.css -o installing-qot-stack-sd-card-UCLA-TRIP.html README.md
